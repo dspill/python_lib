@@ -6,7 +6,39 @@ import time
 import glob
 import math
 import subprocess
+import numpy as np
 from shutil import copy2, rmtree, copyfileobj
+
+def read_xy(datafile, i_x=0, i_y=1):
+    # load data
+    data = np.loadtxt(datafile).transpose()
+
+    if i_x is None:
+        x = list(range(len(data(0))))
+    else:
+        x = data[i_x]
+
+    y = data[i_y]
+
+    return (x, y)
+
+def write_multiple(list_of_lists, filename):
+    ll = np.array(list_of_lists).transpose()
+
+    with open(filename, 'w') as outfile:
+        for row in ll:
+            for column in row:
+                outfile.write('%15.9e ' % column)
+            outfile.write('\n')
+
+    outfile.close()
+
+def write_xy(x, y, filename):
+    if len(x) != len(y):
+        raise RuntimeError("lengths of lists is not compatible")
+
+    write_multiple([x, y], filename)
+
 
 
 def compactifyDump(filename="./dump.tar", compress=False):
@@ -103,3 +135,16 @@ def concatenateFiles(file_list, outfile):
             with open(f, 'rb') as fd:
                 #10MB per writing chunk to avoid reading big file into memory
                 copyfileobj(fd, wfd, 1024*1024*10)
+
+
+def natural_sort(l): 
+    convert = lambda text: int(text) if text.isdigit() else text.lower() 
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+    return sorted(l, key = alphanum_key)
+
+def hours_minutes_seconds(td):
+    ''' works for datetime.timedelta object '''
+    return '{:02}:{:02}:{:02}'.format(
+            int(td.days * 24 + td.seconds//3600),
+            int(td.seconds//60)%60,
+            int(td.seconds%60))
