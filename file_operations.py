@@ -9,7 +9,7 @@ from distutils.dir_util import copy_tree
 
 class Dump_container:
     def __init__(self, file_list):
-        self.names = ["pops", "fluid", "couplForces"]
+        self.names = ['pops', 'fluid', 'couplForces']
         self.file_list = file_list
 
         # get list of steps
@@ -38,15 +38,16 @@ class Dump_container:
                     if z:
                         core_set.add(int(z.groups()[0]))
 
-                if len(core_set) == 0:
-                    raise RuntimeError("no files for " + name + "step " + step)
+                if not core_set:
+                    raise RuntimeError('no files for ' + name + 'step ' + step)
 
                 if max(core_set) != len(core_set) - 1 or min(core_set) != 0:
-                    raise RuntimeError("file list inconsistent for " + name + "step " + step)
+                    raise RuntimeError('file list inconsistent for ' + name
+                            + ' step ' + step)
 
                 for i in range(len(core_set) - 1):
                     if i not in core_set:
-                        raise RuntimeError("no file for core no." + str(i))
+                        raise RuntimeError('no file for core no.' + str(i))
 
     def reduced_file_list(self, steps=None, names=None):
         if names is None:
@@ -75,7 +76,8 @@ class Dump_container:
 
     # copy function has to be defined individually in each subclass
     def copy(self, new_directory, steps=None, names=None):
-        raise RuntimeError("function copy() not defined")
+        print(self.names, new_directory, steps, names)
+        raise RuntimeError('function copy() not defined')
 
     def copy_first(self, new_directory, names=None):
         self.copy(new_directory, self.steps[0], names)
@@ -88,7 +90,7 @@ class Dump_folder(Dump_container):
     def __init__(self, path):
         self.path = path
         if not os.path.isdir(self.path):
-            raise FileNotFoundError("file %s does not exist" % self.path)
+            raise FileNotFoundError('file %s does not exist' % self.path)
 
         self.file_list = os.listdir(self.path)
         Dump_container.__init__(self, self.file_list)
@@ -96,17 +98,17 @@ class Dump_folder(Dump_container):
     def copy(self, new_directory, steps=None, names=None):
         file_list = self.reduced_file_list(steps, names)
         if not file_list:
-            raise RuntimeError("No files to copy")
+            raise RuntimeError('No files to copy')
 
         if not os.path.isdir(new_directory):
-            print("creating directory " + new_directory)
+            print('creating directory ' + new_directory)
             os.mkdir(new_directory)
 
 
         for fl in file_list:
             copy2(self.path + '/' + fl, new_directory + '/' + fl)
 
-    def concatenate(name, step, outfile):
+    def concatenate(self, name, step, outfile):
         file_list = self.reduced_file_list(name, step)
 
         with open(outfile, 'wb') as wfd:
@@ -118,42 +120,43 @@ class Dump_folder(Dump_container):
     def compress(self, tarfile):
         returncode = subprocess.call(['tar', '-cf', tarfile, self.path])
         if returncode != 0:
-            raise ChildProcessError("tar command failed")
+            raise ChildProcessError('tar command failed')
 
 
 class Dump_tarfile(Dump_container):
     def __init__(self, path):
         self.path = path
         if not os.path.isfile(self.path):
-            raise FileNotFoundError("file %s does not exist" % self.path)
+            raise FileNotFoundError('file %s does not exist' % self.path)
 
         sys.stdout.write('reading file list')
         sys.stdout.flush()
         self.file_list = subprocess.check_output(['tar', '-tf', self.path])
-        self.file_list = self.file_list.decode("utf-8").split('\n')
+        self.file_list = self.file_list.decode('utf-8').split('\n')
         print(' done')
         self.level = self.file_list[0].count('/')
         Dump_container.__init__(self, self.file_list)
 
     def copy(self, new_directory, steps=None, names=None):
         if not os.path.isdir(new_directory):
-            print("creating directory " + new_directory)
+            print('creating directory ' + new_directory)
             os.mkdir(new_directory)
 
         file_list = self.reduced_file_list(steps, names)
 
         sys.stdout.write('extracting')
         sys.stdout.flush()
-        returncode = subprocess.call(['tar', '-xf', self.path, '--strip', str(self.level), '--directory', new_directory] + file_list)
+        returncode = subprocess.call(['tar', '-xf', self.path, '--strip',
+            str(self.level), '--directory', new_directory] + file_list)
         if returncode != 0:
-            raise ChildProcessError("tar command failed")
+            raise ChildProcessError('tar command failed')
         else:
             print(' done')
 
 
 def retrieve(directory, file_list):
     if not os.path.isdir(directory):
-        raise FileNotFoundError("file %s does not exist" % directory)
+        raise FileNotFoundError('file %s does not exist' % directory)
 
     for fl in file_list:
         copy2(directory + '/' + fl, './' + fl)
@@ -161,7 +164,7 @@ def retrieve(directory, file_list):
 
 def copy(directory, file_list, new_directory):
     if not os.path.isdir(directory):
-        raise FileNotFoundError("directory %s does not exist" % directory)
+        raise FileNotFoundError('directory %s does not exist' % directory)
 
     if not os.path.isdir(new_directory):
         os.mkdir(new_directory)
@@ -171,8 +174,8 @@ def copy(directory, file_list, new_directory):
 
 def cwd():
     ''' return current working directory with all links resolved '''
-    cwd = os.getcwd()
-    return os.path.realpath(cwd)
+    wd = os.getcwd()
+    return os.path.realpath(wd)
 
 def scratch_path(path=cwd()):
     ''' return the path of the scratch directory that corresponds to path '''

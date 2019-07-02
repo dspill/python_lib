@@ -2,12 +2,29 @@
 import os
 import os.path
 import re
-import time
 import glob
-import math
 import subprocess
 import numpy as np
-from shutil import copy2, rmtree, copyfileobj
+from shutil import copy2, copyfileobj
+
+def YesNo(Question):
+    """Ask for yes or no answer and return a boolean."""
+
+    Yes = set(["YES", "Y", "yes", "y", "Yes", ""])
+    No = set(["NO", "N", "no", "n", "No"])
+
+    while True:
+        Answer = input(Question).lower()
+        if Answer in Yes:
+            return True
+        elif Answer in No:
+            return False
+        else:
+            print("Possible answers:")
+            print("  %s" % sorted(list(Yes)))
+            print("or")
+            print("  %s" % sorted(list(No)))
+
 
 def read_xy(datafile, i_x=0, i_y=1):
     # load data
