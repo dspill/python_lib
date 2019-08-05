@@ -28,6 +28,11 @@ class Dump_container:
 
     def check_consistency(self):
         # check consistency of file list
+        n_files = len(self.file_list)
+        n_steps = len(self.steps)
+        if n_files % n_steps != 0:
+            raise RuntimeError('#files not divisible by #steps')
+
         core_set = set()
         for name in self.names:
             for step in self.steps:
@@ -84,6 +89,13 @@ class Dump_container:
 
     def copy_last(self, new_directory, names=None):
         self.copy(new_directory, self.steps[-1], names)
+
+    def info(self):
+        print('Names:   ', self.names)
+        print('#files = ', len(self.file_list))
+        print('#steps = ', len(self.steps))
+
+
 
 
 class Dump_folder(Dump_container):

@@ -200,7 +200,7 @@ def run(simstep, p, xyzfilename):
 
             lb.saveLBConf()     # saves current state of the LB fluid
 
-            duration = time.time() - duration
+        duration = time.time() - duration
 
     filestream.close()
 

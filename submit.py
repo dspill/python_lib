@@ -90,8 +90,8 @@ class Submit_script:
             infile = os.path.normpath(infile)
             if not os.path.isfile(infile):
                 raise FileNotFoundError(infile + ' does not exist')
-            else:
-                self.check_infile()
+
+            self.check_infile()
 
         self.esprc_path = os.path.expanduser(self.esprc_path)
         self.esprc_path = os.path.normpath(self.esprc_path)
@@ -192,7 +192,7 @@ class Submit_script:
             outfile.write('rm -rf $scratch\n')
             outfile.write('mkdir -pv $scratch\n')
             # copy scripts to scratch
-            outfile.write('rsync -rvat *.{sh,py,txt} $scratch 2>&1\n')
+            outfile.write('rsync -rvat *.{sh,txt} $scratch 2>&1\n')
 
             # move initial configurations to scratch
             if self.infile:
@@ -214,8 +214,8 @@ class Submit_script:
                 elif not self.force:
                     if self.simstep == 'quench':
                         raise RuntimeError('No initial LB configuration found')
-                    else:
-                        print('starting with new LB configuration')
+
+                    print('starting with new LB configuration')
 
             outfile.write('\n')
             outfile.write('cd $scratch\n')
@@ -236,12 +236,15 @@ class Submit_script:
                 if not os.path.isfile(os.path.expanduser(copy_script)):
                     raise FileNotFoundError(copy_script + ' does not exist')
                 outfile.write('    ' + copy_script + ' $scratch/dump $wd/dump\n')
+            outfile.write('    echo DONE\n')
             outfile.write('    exit $result\n')
 
             outfile.write('else\n')
             outfile.write('    echo \'job FAILED\'\n')
+            outfile.write('    echo DONE\n')
             outfile.write('    exit $result\n')
             outfile.write('fi\n')
+        outfile.write('echo DONE\n')
         outfile.close()
 
     def write_parameters(self):
