@@ -96,8 +96,6 @@ class Dump_container:
         print('#steps = ', len(self.steps))
 
 
-
-
 class Dump_folder(Dump_container):
     def __init__(self, path):
         self.path = path
@@ -184,10 +182,12 @@ def copy(directory, file_list, new_directory):
     for fl in file_list:
         copy2(directory + '/' + fl, new_directory + '/' + fl)
 
+
 def cwd():
     ''' return current working directory with all links resolved '''
     wd = os.getcwd()
     return os.path.realpath(wd)
+
 
 def scratch_path(path=cwd()):
     ''' return the path of the scratch directory that corresponds to path '''
@@ -215,6 +215,7 @@ def scratch_path(path=cwd()):
 
     name = prefix + '/' + name
     return name
+
 
 def copy_to_scratch(src=cwd()):
     copy_tree(src, scratch_path())

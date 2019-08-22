@@ -127,7 +127,7 @@ class Submit_script:
             outfile.write('run_step.warmup(p)\n')
         else:
             outfile.write('run_step.run(\'' + self.simstep
-                    + '\', p, \'' + self.infile + '\')\n')
+                    + '\', p, \'' + os.path.basename(self.infile) + '\')\n')
 
         outfile.write('END\n')
 
@@ -167,6 +167,9 @@ class Submit_script:
 
             # setup python environment
             outfile.write('PYTHONPATH=""\n')
+            if not os.path.isfile('$HOME/python/run_step.py'):
+                raise RuntimeError('File $HOME/python/run_step.py does not '
+                        'exist')
             outfile.write('PYTHONPATH="$HOME/python"\n')
 
             outfile.write('source ' + self.esprc_path)
@@ -244,8 +247,8 @@ class Submit_script:
             outfile.write('    echo DONE\n')
             outfile.write('    exit $result\n')
             outfile.write('fi\n')
-        outfile.write('echo DONE\n')
-        outfile.close()
+
+            outfile.write('echo DONE\n')
 
     def write_parameters(self):
         json.dump(self.parameters, open(self.para_filename,'w'))
@@ -263,10 +266,10 @@ def generate(p, arguments):
     print('Generating ' + scriptname)
     if p['simstep'] == 'warmup':
         p['partition']         = 'express'
-        p['n_nodes']           = 1
-        p['n_tasks_per_node']  = 16
+        p['n_nodes']           = 2
+        p['n_tasks_per_node']  = 32
         p['n_tasks_per_core']  = 1
-        p['timelimit']         = 29*60
+        p['timelimit']         = 30*60
         p['lattice_boltzmann'] = False
     elif p['simstep'] == 'relax':
         p['lattice_boltzmann'] = False

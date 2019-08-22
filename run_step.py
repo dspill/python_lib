@@ -155,7 +155,12 @@ def warmup(p):
 
 def run(simstep, p, xyzfilename):
     ''' Run simulation with parameters p '''
-    timeout = time.time() + 0.97 * p['timelimit'] - 90
+    if simstep == 'quench':
+        fac = 0.9
+    else:
+        fac = 0.97
+
+    timeout = time.time() + fac * p['timelimit'] - 90
 
     print("Running %s" % simstep)
     if simstep == 'relax':
@@ -171,7 +176,7 @@ def run(simstep, p, xyzfilename):
         raise RuntimeError("simstep " + simstep + " not supported")
 
     if not os.path.isfile(xyzfilename):
-        raise FileNotFoundError("File %s does not exist" % xyzfilename)
+        raise RuntimeError("File %s does not exist" % xyzfilename)
 
     system, integrator, lb = setupSystem(p, xyzfilename=xyzfilename, phi=phi,
                                          with_lb=with_lb)
