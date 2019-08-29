@@ -167,9 +167,9 @@ class Submit_script:
 
             # setup python environment
             outfile.write('PYTHONPATH=""\n')
-            if not os.path.isfile('$HOME/python/run_step.py'):
-                raise RuntimeError('File $HOME/python/run_step.py does not '
-                        'exist')
+            if not os.path.isfile(os.environ['HOME'] + '/python/run_step.py'):
+                raise RuntimeError('File ' + os.environ['HOME'] 
+                        + '/python/run_step.py does not exist')
             outfile.write('PYTHONPATH="$HOME/python"\n')
 
             outfile.write('source ' + self.esprc_path)

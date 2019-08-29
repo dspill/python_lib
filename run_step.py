@@ -3,7 +3,7 @@ import os
 import json
 import espressopp
 from espressopp.tools.functions import setupSystem, customWritexyz, \
-        customWritexyzStream, fileOutput
+        customWritexyzStream, fileOutput, printInteractions
 
 def warmup(p):
     ''' Generate configuration and perform warmup '''
@@ -180,6 +180,7 @@ def run(simstep, p, xyzfilename):
 
     system, integrator, lb = setupSystem(p, xyzfilename=xyzfilename, phi=phi,
                                          with_lb=with_lb)
+    printInteractions(system)
 
     trajname = "traj_"+simstep+".xyz"
     outname = "output_"+simstep+".dat"
