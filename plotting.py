@@ -12,9 +12,21 @@ columnwidths = {
         'beamer' : 307.28987
         }
 
+def filter_files(data_dir, regexp):
+    # regexp = '.+thr-1.+'
+    regexp_comp = re.compile(regexp)
+
+    filenames = sorted(os.listdir(data_dir))
+    filenames = np.array(list(filter(regexp_comp.match, filenames)))
+    lst = [data_dir + '/' + filename for filename in filenames]
+    return sorted(lst)
+
 
 def read_xy(datafile, xcol=0, ycol=1):
     return np.loadtxt(datafile, unpack=True, usecols=(xcol, ycol))
+
+def read_cols(datafile, columns):
+    return np.loadtxt(datafile, unpack=True, usecols=columns)
 
 def read_xyz(filename):
     with open(filename) as f:
@@ -129,7 +141,7 @@ def fit_peak(x, y, axes, filename, step):
                         + ' already exists. Appending step '
                         + str(step))
 
-                outfile = open(outfile_name, 'a')
+            outfile = open(outfile_name, 'a')
             outfile.write('%10d %16.9e %16.9e\n'
                     % (step, popt[1], pcov[1][1]))
             outfile.close()
@@ -141,6 +153,44 @@ def fit_peak(x, y, axes, filename, step):
                 break
 
 
+def select_point(x, y, axes, filename, step):
+    tellme('Select point')
+    pt = plt.ginput()[0]
+    print('selected ', pt)
+    # write to file
+    outfile_name = filename
+    if os.path.isfile(outfile_name):
+        print('File ' + outfile_name
+                + ' already exists. Appending step '
+                + str(step))
+
+    outfile = open(outfile_name, 'a')
+    outfile.write('%10d %16.9e %16.9e\n' % (step, pt[0], pt[1]))
+    outfile.close()
+    plt.cla()
+
+
+def select_point_err(x, y, axes, filename, step):
+    tellme('Select point')
+    pts = np.asarray(plt.ginput(3, timeout=-1))
+    pts = sorted(pts , key=lambda k: k[0]) # sort according to x (0) coordinate
+    print('selected ', pts)
+    assert(pts[0][0] <= pts[1][0] <= pts[2][0])
+
+    # write to file
+    outfile_name = filename
+    if os.path.isfile(outfile_name):
+        print('File ' + outfile_name
+                + ' already exists. Appending step '
+                + str(step))
+
+    outfile = open(outfile_name, 'a')
+    outfile.write('%10d %16.9e %16.9e %16.9e %16.9e\n' % (step, pts[1][0],
+        pts[1][1], pts[0][0], pts[2][0]))
+    outfile.close()
+    plt.cla()
+
+
 def ParseArguments():
     parser = argparse.ArgumentParser(description='''plot your data files''')
 
@@ -150,16 +200,29 @@ def ParseArguments():
     parser.add_argument('-r', '--from_row', action='store_true',
             help='Take row index as x-axis')
 
+    parser.add_argument('-m', '--marker', action='store_true',
+            help='use markers in plot')
+
     parser.add_argument('-x', '--xcol', type=int, default=0,
             help='x-column to plot')
 
     parser.add_argument('-y', '--ycol', nargs='+', type=int,
             default=[1], help='y-column(s) to plot')
 
+    parser.add_argument('--xfac', type=int, default=1,
+            help='factor by which to scale x-axis')
+
     parser.add_argument('-o', '--output', type=str, help='output file')
 
     parser.add_argument('--fit_peak', type=str,
             help='fit parabola to peak and store position in given file')
+
+    parser.add_argument('--select_point', type=str,
+            help='select point in plot and store it in given file')
+
+    parser.add_argument('--select_point_err', type=str,
+            help='select three points in plot, which form the actual data '
+            'point plus error bars and store it in given file')
 
     parser.add_argument('--slice', action='store_true',
             help='plot a sliced (2d) configuration')
@@ -176,13 +239,29 @@ def ParseArguments():
     return parser.parse_args()
 
 
-def get_step(filename):
-    z = re.match('\D*(\d+)\D*', filename)
+def get_step(string):
+    z = re.match('\D*0*(\d+)\D*', string)
     if z:
         # print('step = ' + str(int(z.groups()[0])))
         return int(z.groups()[0])
 
     return int(input('timestep? '))
+
+
+def get_integer(string):
+    z = re.match('\D*(\d+)\D*', string)
+    if z:
+        return int(z.groups()[0])
+
+    print("no integer detected")
+    return None
+
+
+def get_decimal(string):
+    z = re.match('.*(\d+[.]\d+)\D*', string)
+    if z:
+        return float(z.groups()[0])
+
 
 def plot_slice(datafiles):
     n_files = len(datafiles)
@@ -243,7 +322,13 @@ def plot(args):
             if args['from_row']:
                 x = [i for i in range(len(y))]
 
-            axes.plot(x, y, label=f+' c'+str(ycol))
+            if args['marker']:
+                marker = '.'
+            else:
+                marker = None
+
+            x *= args['xfac']
+            axes.plot(x, y, label=f+' c'+str(ycol), marker=marker)
 
         if i_f == 0:
             min_x = min(x)
@@ -279,6 +364,12 @@ def plot(args):
         if args['fit_peak']:
             fit_peak(x, y, axes, args['fit_peak'], get_step(f))
 
+        if args['select_point']:
+            select_point(x, y, axes, args['select_point'], get_step(f))
+
+        if args['select_point_err']:
+            select_point_err(x, y, axes, args['select_point'], get_step(f))
+
 
     if args['output']:
         plt.savefig(args['output'])
@@ -288,17 +379,24 @@ def plot(args):
         plt.show()
 
 
-def get_figsize(columnwidth, wf=0.5, hf=(5.**0.5-1.0)/2.0, ):
+def get_figsize(wf=0.5, hf=(5.**0.5-1.0)/2.0, style='beamer'):
     """Parameters:
-      - wf [float]:  width fraction in columnwidth units
-      - hf [float]:  height fraction in columnwidth units.
-                     Set by default to golden ratio.
-      - columnwidth [float]: width of the column in latex. Get this from LaTeX
-                             using \showthe\columnwidth
+      - wf [float]:     width fraction in columnwidth units
+      - hf [float]:     height fraction in columnwidth units.
+                        Set by default to golden ratio.
+      - style [string]: Type of document. Get columnwidth from LaTeX
+                        using \showthe\columnwidth
     Returns:  (fig_width,fig_height): that should be given to matplotlib
     """
+    if style is 'beamer': 
+        columnwidth = 307.28987 # pt
+    elif style is 'article':
+        columnwidth = 455.24411 # pt
+    else:
+        raise ValueError('style %s not defined' % style)
+
     fig_width_pt = columnwidth*wf
-    inches_per_pt = 1.0/72.27               # Convert pt to inch
+    inches_per_pt = 1.0/72                 # Convert pt to inch
     fig_width = fig_width_pt*inches_per_pt  # width in inches
     fig_height = fig_width*hf      # height in inches
     return (fig_width, fig_height)
