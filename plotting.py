@@ -153,12 +153,11 @@ def fit_peak(x, y, axes, filename, step):
                 break
 
 
-def select_point(x, y, axes, filename, step):
+def select_point(x, y, axes, outfile_name, step):
     tellme('Select point')
     pt = plt.ginput()[0]
     print('selected ', pt)
     # write to file
-    outfile_name = filename
     if os.path.isfile(outfile_name):
         print('File ' + outfile_name
                 + ' already exists. Appending step '
@@ -170,7 +169,7 @@ def select_point(x, y, axes, filename, step):
     plt.cla()
 
 
-def select_point_err(x, y, axes, filename, step):
+def select_point_err(x, y, axes, outfile_name, step):
     tellme('Select point')
     pts = np.asarray(plt.ginput(3, timeout=-1))
     pts = sorted(pts , key=lambda k: k[0]) # sort according to x (0) coordinate
@@ -178,7 +177,6 @@ def select_point_err(x, y, axes, filename, step):
     assert(pts[0][0] <= pts[1][0] <= pts[2][0])
 
     # write to file
-    outfile_name = filename
     if os.path.isfile(outfile_name):
         print('File ' + outfile_name
                 + ' already exists. Appending step '
@@ -368,7 +366,7 @@ def plot(args):
             select_point(x, y, axes, args['select_point'], get_step(f))
 
         if args['select_point_err']:
-            select_point_err(x, y, axes, args['select_point'], get_step(f))
+            select_point_err(x, y, axes, args['select_point_err'], get_step(f))
 
 
     if args['output']:
