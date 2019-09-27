@@ -251,7 +251,7 @@ def get_integer(string):
     if z:
         return int(z.groups()[0])
 
-    print("no integer detected")
+    print("no integer detected for " + string)
     return None
 
 
