@@ -8,13 +8,13 @@ import numpy as np
 from scipy.optimize import curve_fit
 
  # value given by Latex \the\columnwidth
-columnwidths = {
-        'beamer' : 307.28987
-        }
-
+columnwidths = {'beamer' : 307.28987}
 
 def read_xy(datafile, xcol=0, ycol=1):
     return np.loadtxt(datafile, unpack=True, usecols=(xcol, ycol))
+
+def read_all(datafile):
+    return np.loadtxt(datafile, unpack=True)
 
 def read_xyz(filename):
     with open(filename) as f:
@@ -298,7 +298,8 @@ def get_figsize(columnwidth, wf=0.5, hf=(5.**0.5-1.0)/2.0, ):
     Returns:  (fig_width,fig_height): that should be given to matplotlib
     """
     fig_width_pt = columnwidth*wf
-    inches_per_pt = 1.0/72.27               # Convert pt to inch
+    # inches_per_pt = 1.0/72.27               # Convert pt to inch
+    inches_per_pt = 1.0/72
     fig_width = fig_width_pt*inches_per_pt  # width in inches
     fig_height = fig_width*hf      # height in inches
     return (fig_width, fig_height)
