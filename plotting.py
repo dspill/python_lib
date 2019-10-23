@@ -8,9 +8,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 
  # value given by Latex \the\columnwidth
-columnwidths = {
-        'beamer' : 307.28987
-        }
+columnwidths = {'beamer' : 307.28987}
 
 def filter_files(data_dir, regexp):
     # regexp = '.+thr-1.+'
@@ -24,6 +22,9 @@ def filter_files(data_dir, regexp):
 
 def read_xy(datafile, xcol=0, ycol=1):
     return np.loadtxt(datafile, unpack=True, usecols=(xcol, ycol))
+
+def read_all(datafile):
+    return np.loadtxt(datafile, unpack=True)
 
 def read_cols(datafile, columns):
     return np.loadtxt(datafile, unpack=True, usecols=columns)
@@ -420,7 +421,8 @@ def get_figsize(wf=0.5, hf=(5.**0.5-1.0)/2.0, style='beamer'):
         raise ValueError('style %s not defined' % style)
 
     fig_width_pt = columnwidth*wf
-    inches_per_pt = 1.0/72                 # Convert pt to inch
+    # inches_per_pt = 1.0/72.27               # Convert pt to inch
+    inches_per_pt = 1.0/72
     fig_width = fig_width_pt*inches_per_pt  # width in inches
     fig_height = fig_width*hf      # height in inches
     return (fig_width, fig_height)

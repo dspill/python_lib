@@ -25,6 +25,11 @@ class Submit_script:
         self.machine           = parameters['machine']
         self.lattice_boltzmann = parameters['lattice_boltzmann']
 
+        self.name = self.simstep
+        if 'name' in parameters:
+            if parameters['name'] is not None:
+                self.name = parameters['name']
+
         self.force             = force
         self.para_filename     = 'parameters_' + self.simstep + '.txt'
         self.n_cores           = self.n_nodes * self.n_tasks_per_node
@@ -73,6 +78,7 @@ class Submit_script:
             'esprc_path'       : self.esprc_path,
             'machine'          : self.machine,
             'lattice_boltzmann': self.lattice_boltzmann,
+            'name'             : self.name,
             }
         for key, var in variables.items():
             if var is None:
@@ -142,7 +148,7 @@ class Submit_script:
             outfile.write('\n')
 
             outfile.write('#SBATCH -D ./\n') # working directory
-            outfile.write('#SBATCH -J ' + self.simstep + '\n') # job name
+            outfile.write('#SBATCH -J ' + self.name + '\n') # job name
             outfile.write('\n')
 
             outfile.write('#SBATCH --partition=' + self.partition + '\n')
@@ -168,7 +174,7 @@ class Submit_script:
             # setup python environment
             outfile.write('PYTHONPATH=""\n')
             if not os.path.isfile(os.environ['HOME'] + '/python/run_step.py'):
-                raise RuntimeError('File ' + os.environ['HOME'] 
+                raise RuntimeError('File ' + os.environ['HOME']
                         + '/python/run_step.py does not exist')
             outfile.write('PYTHONPATH="$HOME/python"\n')
 
@@ -260,6 +266,7 @@ class Submit_script:
 def generate(p, arguments):
     p['simstep']   = arguments['s']
     p['infile']    = arguments['i']
+    p['name']      = arguments['name']
 
     scriptname = 'submit_' + p['simstep'] + '.sh'
 

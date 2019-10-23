@@ -45,19 +45,10 @@ def YesNo(Question):
             print("  %s" % sorted(list(No)))
 
 
-def read_xy(datafile, i_x=0, i_y=1):
-    # load data
-    data = np.loadtxt(datafile).transpose()
+def read_xy(datafile, xcol=0, ycol=1):
+    return np.loadtxt(datafile, unpack=True, usecols=(xcol, ycol))
 
-    if i_x is None:
-        x = list(range(len(data(0))))
-    else:
-        x = data[i_x]
-
-    y = data[i_y]
-
-    return (x, y)
-
+''' write multi-column file '''
 def write_multiple(list_of_lists, filename):
     ll = np.array(list_of_lists).transpose()
 
