@@ -31,12 +31,17 @@ class Dump_container:
         n_files = len(self.file_list)
         n_steps = len(self.steps)
         if n_files % n_steps != 0:
-            raise RuntimeError('#files not divisible by #steps')
+            # raise RuntimeError('#files not divisible by #steps')
+            print('#files not divisible by #steps')
 
         core_set = set()
         for name in self.names:
             for step in self.steps:
                 new_list =  self.reduced_file_list(step, name)
+
+                if len(new_list) != 128:
+                    print(name, step, len(new_list))
+
                 # get list of core numbers
                 for filename in new_list:
                     z = re.match('.*' + name + '.+\.(.+)\.dat', filename)
@@ -108,7 +113,8 @@ class Dump_folder(Dump_container):
     def copy(self, new_directory, steps=None, names=None):
         file_list = self.reduced_file_list(steps, names)
         if not file_list:
-            raise RuntimeError('No files to copy')
+            print('No files to copy')
+            return
 
         if not os.path.isdir(new_directory):
             print('creating directory ' + new_directory)
