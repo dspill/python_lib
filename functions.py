@@ -4,8 +4,27 @@ import os.path
 import re
 import glob
 import subprocess
+import contextlib
+import io
+import sys
 import numpy as np
 from shutil import copy2, copyfileobj
+
+# Python3
+def supress_stdout(func):
+    def wrapper(*a, **ka):
+        with open(os.devnull, 'w') as devnull:
+            with contextlib.redirect_stdout(devnull):
+                func(*a, **ka)
+    return wrapper
+
+# Python2
+@contextlib.contextmanager
+def nostdout():
+    save_stdout = sys.stdout
+    sys.stdout = io.BytesIO()
+    yield
+    sys.stdout = save_stdout
 
 def YesNo(Question):
     """Ask for yes or no answer and return a boolean."""
