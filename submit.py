@@ -108,14 +108,13 @@ class Submit_script:
         outfile.write('module purge\n')
 
         if self.machine == 'draco':
-            outfile.write('module load intel/18.0.3\n')
-            outfile.write('module load impi/2018.3\n')
-            outfile.write('module load mkl/2018.3\n')
+            outfile.write('module load intel/18.0.5\n')
+            outfile.write('module load impi/2018.4\n')
             outfile.write('module load anaconda/3/5.1\n')
 
         elif self.machine == 'cobra':
             outfile.write('module load intel\n')
-            outfile.write('module load impi/2018.3\n')
+            outfile.write('module load impi/2018.4\n')
             outfile.write('module load mkl\n')
             outfile.write('module load anaconda/3/5.1\n')
 
@@ -264,6 +263,9 @@ class Submit_script:
         self.write_parameters()
 
 def generate(p, arguments):
+    ''' generate a submit script that can be submitted via the command
+    sbatch
+    '''
     p['simstep']   = arguments['s']
     p['infile']    = arguments['i']
     p['name']      = arguments['name']

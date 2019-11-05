@@ -39,9 +39,6 @@ class Dump_container:
             for step in self.steps:
                 new_list =  self.reduced_file_list(step, name)
 
-                if len(new_list) != 128:
-                    print(name, step, len(new_list))
-
                 # get list of core numbers
                 for filename in new_list:
                     z = re.match('.*' + name + '.+\.(.+)\.dat', filename)

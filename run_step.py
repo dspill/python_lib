@@ -1,7 +1,7 @@
 import time
 import os
 import json
-import espressopp
+import espressopp as epp
 from espressopp.tools.functions import setupSystem, customWritexyz, \
         customWritexyzStream, fileOutput, printInteractions
 
@@ -26,38 +26,38 @@ def warmup(p):
     timestep    = p['dt']
     box         = p['box']
 
-    print(espressopp.Version().info())
+    print(epp.Version().info())
     print('Setting up simulation ...')
 
     #logging.getLogger("SteepestDescent").setLevel(logging.INFO)
 
-    system         = espressopp.System()
-    system.rng     = espressopp.esutil.RNG()
+    system         = epp.System()
+    system.rng     = epp.esutil.RNG()
     system.rng.seed(seed)
-    system.bc      = espressopp.bc.OrthorhombicBC(system.rng, box)
+    system.bc      = epp.bc.OrthorhombicBC(system.rng, box)
     system.skin    = skin
-    nodeGrid       = espressopp.tools.decomp.nodeGrid(espressopp.MPI.COMM_WORLD.size)
-    cellGrid       = espressopp.tools.decomp.cellGrid(box, nodeGrid, rc, skin)
-    system.storage = espressopp.storage.DomainDecomposition(system, nodeGrid, cellGrid)
+    nodeGrid       = epp.tools.decomp.nodeGrid(epp.MPI.COMM_WORLD.size)
+    cellGrid       = epp.tools.decomp.cellGrid(box, nodeGrid, rc, skin)
+    system.storage = epp.storage.DomainDecomposition(system, nodeGrid, cellGrid)
 
-    integrator     = espressopp.integrator.VelocityVerlet(system)
+    integrator     = epp.integrator.VelocityVerlet(system)
     integrator.dt  = timestep
-    thermostat     = espressopp.integrator.LangevinThermostat(system)
+    thermostat     = epp.integrator.LangevinThermostat(system)
     thermostat.gamma  = p['langevin_gamma']
     thermostat.temperature = p['temperature']
     integrator.addExtension(thermostat)
 
-    steepest       = espressopp.integrator.MinimizeEnergy(system, gamma=0.001,
+    steepest       = epp.integrator.MinimizeEnergy(system, gamma=0.001,
             ftol=0.1, max_displacement=0.001, variable_step_flag=False)
 
     # set the polymer properties
     bondlen            = 0.97
 
     props    = ['id', 'type', 'mass', 'pos', 'v']
-    vel_zero = espressopp.Real3D(0.0, 0.0, 0.0)
+    vel_zero = epp.Real3D(0.0, 0.0, 0.0)
 
-    bondlist  = espressopp.FixedPairList(system.storage)
-    #anglelist = espressopp.FixedTripleList(system.storage)
+    bondlist  = epp.FixedPairList(system.storage)
+    #anglelist = epp.FixedTripleList(system.storage)
     pid       = 1
     bead_type = 0
     mass      = 1.0
@@ -67,7 +67,7 @@ def warmup(p):
     chain = []
     for _ in range(num_chains):
         startpos = system.bc.getRandomPos()
-        positions, bonds, _ = espressopp.tools.topology.polymerRW(pid,
+        positions, bonds, _ = epp.tools.topology.polymerRW(pid,
                 startpos, monomers_per_chain, bondlen, True)
         for k in range(monomers_per_chain):
             part = [pid + k, bead_type, mass, positions[k], vel_zero]
@@ -86,22 +86,22 @@ def warmup(p):
     density = num_particles * 1.0 / (L * L * L)
 
     # Lennard-Jones with Verlet list
-    vl      = espressopp.VerletList(system, cutoff=rc)
-    potLJ   = espressopp.interaction.LennardJones(epsilon=1.0, sigma=1.0,
+    vl      = epp.VerletList(system, cutoff=rc)
+    potLJ   = epp.interaction.LennardJones(epsilon=1.0, sigma=1.0,
             cutoff=rc, shift=0)
-    interLJ = espressopp.interaction.VerletListLennardJones(vl)
+    interLJ = epp.interaction.VerletListLennardJones(vl)
     interLJ.setPotential(type1=0, type2=0, potential=potLJ)
     system.addInteraction(interLJ)
 
     # FENE bonds
-    potFENE = espressopp.interaction.FENECapped(K=3000.0, r0=0.0, rMax=1.5,
+    potFENE = epp.interaction.FENECapped(K=3000.0, r0=0.0, rMax=1.5,
                                                 cutoff=8, caprad=1.49999)
-    interFENE = espressopp.interaction.FixedPairListFENECapped(system, bondlist, potFENE)
+    interFENE = epp.interaction.FixedPairListFENECapped(system, bondlist, potFENE)
     system.addInteraction(interFENE, 'FENE')
 
     # Cosine with FixedTriple list
-    #potCosine = espressopp.interaction.Cosine(K=1.5, theta0=3.1415926)
-    #interCosine = espressopp.interaction.FixedTripleListCosine(system, anglelist, potCosine)
+    #potCosine = epp.interaction.Cosine(K=1.5, theta0=3.1415926)
+    #interCosine = epp.interaction.FixedTripleListCosine(system, anglelist, potCosine)
     #system.addInteraction(interCosine)
 
     # print simulation parameters
@@ -119,35 +119,35 @@ def warmup(p):
     print('CellGrid            = ', system.storage.getCellGrid())
     print('')
 
-    # espressopp.tools.decomp.tuneSkin(system, integrator)
+    # epp.tools.decomp.tuneSkin(system, integrator)
 
     #filename = "initial_for_relax.res"
-    #espressopp.tools.pdb.pdbwrite(filename, system, monomers_per_chain, False)
+    #epp.tools.pdb.pdbwrite(filename, system, monomers_per_chain, False)
 
-    espressopp.tools.analyse.info(system, steepest)
+    epp.tools.analyse.info(system, steepest)
     start_time = time.clock()
     for k in range(10):
         steepest.run(isteps)
-        espressopp.tools.analyse.info(system, steepest)
+        epp.tools.analyse.info(system, steepest)
 
     # exchange the FENE potential
-    espressopp.System.removeInteractionByName(system, 'FENE')
-    potFENE = espressopp.interaction.FENECapped(K=30.0, r0=0.0, rMax=1.5, cutoff=8, caprad=1.499999)
-    interFENE = espressopp.interaction.FixedPairListFENECapped(system, bondlist, potFENE)
+    epp.System.removeInteractionByName(system, 'FENE')
+    potFENE = epp.interaction.FENECapped(K=30.0, r0=0.0, rMax=1.5, cutoff=8, caprad=1.499999)
+    interFENE = epp.interaction.FixedPairListFENECapped(system, bondlist, potFENE)
     system.addInteraction(interFENE)
 
     for k in range(20):
         steepest.run(isteps)
-        espressopp.tools.analyse.info(system, steepest)
+        epp.tools.analyse.info(system, steepest)
     end_time = time.clock()
 
-    espressopp.tools.analyse.info(system, integrator)
+    epp.tools.analyse.info(system, integrator)
     for k in range(2):
         integrator.run(isteps)
-        espressopp.tools.analyse.info(system, integrator)
+        epp.tools.analyse.info(system, integrator)
     end_time = time.clock()
-    espressopp.tools.analyse.info(system, integrator)
-    espressopp.tools.analyse.final_info(system, integrator, vl, start_time, end_time)
+    epp.tools.analyse.info(system, integrator)
+    epp.tools.analyse.final_info(system, integrator, vl, start_time, end_time)
 
     customWritexyz("final_configuration_warmup.xyz", system, velocities=True,
                    append=False)
@@ -193,6 +193,7 @@ def run(simstep, p, xyzfilename):
     while time.time() < (timeout - duration):
         duration = time.time()
 
+        epp.tools.analyse.info(system, integrator)
         integrator.run(p['ints_per_step'])
         # output observables
         fileOutput(system, integrator, outname)
@@ -212,6 +213,7 @@ def run(simstep, p, xyzfilename):
 
     customWritexyz("final_configuration_" + simstep + '.xyz', system,
                    velocities=True, append=False)
+
 
 def read_parameters(filename):
     p = json.load(open(filename))
