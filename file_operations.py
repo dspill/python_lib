@@ -4,6 +4,8 @@ import os.path
 import re
 import subprocess
 import sys
+import tarfile
+import numpy as np
 from shutil import copy2, copyfileobj
 from distutils.dir_util import copy_tree
 
@@ -31,8 +33,8 @@ class Dump_container:
         n_files = len(self.file_list)
         n_steps = len(self.steps)
         if n_files % n_steps != 0:
-            # raise RuntimeError('#files not divisible by #steps')
-            print('#files not divisible by #steps')
+            raise RuntimeError('#files not divisible by #steps')
+            # print('#files %i not divisible by #steps %i' % (n_files, n_steps))
 
         core_set = set()
         for name in self.names:
@@ -130,10 +132,11 @@ class Dump_folder(Dump_container):
                     #10MB per writing chunk to avoid reading big file into memory
                     copyfileobj(fd, wfd, 1024*1024*10)
 
-    def compress(self, tarfile):
-        returncode = subprocess.call(['tar', '-cf', tarfile, self.path])
-        if returncode != 0:
-            raise ChildProcessError('tar command failed')
+    def compress(self, tarfile_name):
+        try:
+            tardir(self.path, tarfile_name)
+        except:
+            raise RuntimeError('tar command failed')
 
 
 class Dump_tarfile(Dump_container):
@@ -142,29 +145,51 @@ class Dump_tarfile(Dump_container):
         if not os.path.isfile(self.path):
             raise FileNotFoundError('file %s does not exist' % self.path)
 
-        sys.stdout.write('reading file list')
-        sys.stdout.flush()
-        self.file_list = subprocess.check_output(['tar', '-tf', self.path])
-        self.file_list = self.file_list.decode('utf-8').split('\n')
-        print(' done')
+        fl = []
+        with tarfile.open(path, 'r') as tf:
+            for tarinfo in tf:
+                fl.append(tarinfo.name)
+
+        self.file_list = sorted(fl)
         self.level = self.file_list[0].count('/')
         Dump_container.__init__(self, self.file_list)
+
+    def reduced_member_list(self, tar, steps=None, names=None):
+        if names is None:
+            names = self.names
+        else:
+            if not isinstance(names, (list, tuple)):
+                names = [names]
+
+        if steps is None:
+            steps = self.steps
+        else:
+            if not isinstance(steps, (list, tuple)):
+                steps = [steps]
+
+        new_list = []
+        for step in steps:
+            for name in names:
+                for tarinfo in tar:
+                    filename = tarinfo.name
+                    if filename[0:2] == '..' or filename[0] == '/':
+                        raise RuntimeError('Absolute or relative to parent '
+                                'path detected\n%s' % filename)
+                    z = re.match('.*' + name + str(step) + '\.\d+\.dat', filename)
+
+                    if z:
+                        new_list.append(tarinfo)
+
+        return new_list
 
     def copy(self, new_directory, steps=None, names=None):
         if not os.path.isdir(new_directory):
             print('creating directory ' + new_directory)
             os.mkdir(new_directory)
 
-        file_list = self.reduced_file_list(steps, names)
-
-        sys.stdout.write('extracting')
-        sys.stdout.flush()
-        returncode = subprocess.call(['tar', '-xf', self.path, '--strip',
-            str(self.level), '--directory', new_directory] + file_list)
-        if returncode != 0:
-            raise ChildProcessError('tar command failed')
-        else:
-            print(' done')
+        with tarfile.open(self.path, 'r') as tf:
+            member_list = self.reduced_member_list(tf, steps, names)
+            tf.extractall(new_directory, member_list)
 
 
 def retrieve(directory, file_list):
@@ -222,3 +247,10 @@ def scratch_path(path=cwd()):
 
 def copy_to_scratch(src=cwd()):
     copy_tree(src, scratch_path())
+
+
+def tardir(path, tar_name, mode='w'):
+    with tarfile.open(tar_name, mode) as tar_handle:
+        for root, dirs, files in os.walk(path):
+            for f in files:
+                tar_handle.add(os.path.join(root, f))

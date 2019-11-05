@@ -170,12 +170,32 @@ def select_point(x, y, axes, outfile_name, step):
     plt.cla()
 
 
-def select_point_err(x, y, axes, outfile_name, step):
+def select_point_xerr(x, y, axes, outfile_name, step):
     tellme('Select point')
     pts = np.asarray(plt.ginput(3, timeout=-1))
     pts = sorted(pts , key=lambda k: k[0]) # sort according to x (0) coordinate
     print('selected ', pts)
     assert(pts[0][0] <= pts[1][0] <= pts[2][0])
+
+    # write to file
+    if os.path.isfile(outfile_name):
+        print('File ' + outfile_name
+                + ' already exists. Appending step '
+                + str(step))
+
+    outfile = open(outfile_name, 'a')
+    outfile.write('%10d %16.9e %16.9e %16.9e %16.9e\n' % (step, pts[1][0],
+        pts[1][1], pts[0][0], pts[2][0]))
+    outfile.close()
+    plt.cla()
+
+
+def select_point_yerr(x, y, axes, outfile_name, step):
+    tellme('Select point')
+    pts = np.asarray(plt.ginput(3, timeout=-1))
+    pts = sorted(pts , key=lambda k: k[1]) # sort according to y (1) coordinate
+    print('selected ', pts)
+    assert(pts[0][1] <= pts[1][1] <= pts[2][1])
 
     # write to file
     if os.path.isfile(outfile_name):
@@ -219,7 +239,11 @@ def ParseArguments():
     parser.add_argument('--select_point', type=str,
             help='select point in plot and store it in given file')
 
-    parser.add_argument('--select_point_err', type=str,
+    parser.add_argument('--select_point_xerr', type=str,
+            help='select three points in plot, which form the actual data '
+            'point plus error bars and store it in given file')
+
+    parser.add_argument('--select_point_yerr', type=str,
             help='select three points in plot, which form the actual data '
             'point plus error bars and store it in given file')
 
@@ -366,8 +390,10 @@ def plot(args):
         if args['select_point']:
             select_point(x, y, axes, args['select_point'], get_step(f))
 
-        if args['select_point_err']:
-            select_point_err(x, y, axes, args['select_point_err'], get_step(f))
+        if args['select_point_xerr']:
+            select_point_xerr(x, y, axes, args['select_point_xerr'], get_step(f))
+        if args['select_point_yerr']:
+            select_point_yerr(x, y, axes, args['select_point_yerr'], get_step(f))
 
 
     if args['output']:
