@@ -182,19 +182,23 @@ def run(simstep, p, xyzfilename):
                                          with_lb=with_lb)
     printInteractions(system)
 
-    trajname = "traj_"+simstep+".xyz"
+    # display observables
+    epp.tools.analyse.info(system, integrator)
+    # output observables
     outname = "output_"+simstep+".dat"
-    filestream = open(trajname, 'w')
-
-    customWritexyzStream(filestream, system)
     fileOutput(system, integrator, outname)
+    # output trajectory
+    trajname = "traj_"+simstep+".xyz"
+    filestream = open(trajname, 'w')
+    customWritexyzStream(filestream, system)
 
     duration = 0.
     while time.time() < (timeout - duration):
         duration = time.time()
 
-        epp.tools.analyse.info(system, integrator)
         integrator.run(p['ints_per_step'])
+        # display observables
+        epp.tools.analyse.info(system, integrator)
         # output observables
         fileOutput(system, integrator, outname)
         # output trajectory
