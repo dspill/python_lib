@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 import os
-import os.path
 import re
-import subprocess
-import sys
 import tarfile
-import numpy as np
 from shutil import copy2, copyfileobj
 from distutils.dir_util import copy_tree
 
@@ -219,9 +215,11 @@ def cwd():
 
 def scratch_path(path=cwd()):
     ''' return the path of the scratch directory that corresponds to path '''
+    if not os.path.isdir(path):
+        raise RuntimeError('Path {} does not exist'.format(path))
+
     USER = os.environ['USER']
     name = path
-    print(name)
 
     # only take part relative to user directory
     name = re.sub('^.*/' + USER, '', name)
@@ -251,6 +249,6 @@ def copy_to_scratch(src=cwd()):
 
 def tardir(path, tar_name, mode='w'):
     with tarfile.open(tar_name, mode) as tar_handle:
-        for root, dirs, files in os.walk(path):
+        for root, _, files in os.walk(path):
             for f in files:
                 tar_handle.add(os.path.join(root, f))
