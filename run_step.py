@@ -132,7 +132,7 @@ def warmup(p):
 
     # exchange the FENE potential
     epp.System.removeInteractionByName(system, 'FENE')
-    potFENE = epp.interaction.FENECapped(K=30.0, r0=0.0, rMax=1.5, cutoff=8, caprad=1.499999)
+    potFENE = epp.interaction.FENECapped(K=30.0, r0=0.0, rMax=1.5, cutoff=8, r_cap=1.499999)
     interFENE = epp.interaction.FixedPairListFENECapped(system, bondlist, potFENE)
     system.addInteraction(interFENE)
 
