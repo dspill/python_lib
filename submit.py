@@ -175,6 +175,7 @@ class Submit_script:
             if not os.path.isfile(os.environ['HOME'] + '/python/run_step.py'):
                 raise RuntimeError('File ' + os.environ['HOME']
                         + '/python/run_step.py does not exist')
+
             outfile.write('PYTHONPATH="$HOME/python"\n')
 
             outfile.write('source ' + self.esprc_path)
@@ -206,24 +207,35 @@ class Submit_script:
             if self.infile:
                 outfile.write('rsync -rvat ' + self.infile
                         + ' $scratch 2>&1\n')
+                infile_base = os.path.dirname(self.infile)
+
+
             if self.lattice_boltzmann:
+                # look in current directory for dump folder
                 if os.path.isdir('./dump'):
-                    print('using most recent configuration in ./dump as '
-                    'initial LB configuration')
-                    df = Dump_folder('./dump')
+                    initial_dump = './dump'
+                # look in directory of input file for dump folder
+                elif self.infile and os.path.isdir(infile_base + '/dump'):
+                    initial_dump = os.path.normpath(infile_base + '/dump')
+                # for the quench we require initial dump
+                elif not self.force and self.simstep == 'quench':
+                    raise RuntimeError('No initial LB configuration found')
+                else:
+                    initial_dump = None
+
+                if initial_dump is None:
+                    print('starting with new LB configuration')
+                else:
+                    print('using most recent configuration in %s as '
+                    'initial LB configuration' % initial_dump)
+                    df = Dump_folder(initial_dump)
                     if df.n_cores() != self.n_cores:
                         raise RuntimeError("number of cores does not match")
-
-
+                    # copy most recent LB configuration to scratch
                     copy_script='~/scripts/copy_last_LB_configuration.py'
                     if not os.path.isfile(os.path.expanduser(copy_script)):
                         raise FileNotFoundError(copy_script + ' does not exist')
-                    outfile.write(copy_script + ' $wd/dump $scratch/dump\n')
-                elif not self.force:
-                    if self.simstep == 'quench':
-                        raise RuntimeError('No initial LB configuration found')
-
-                    print('starting with new LB configuration')
+                    outfile.write(copy_script + ' ' + initial_dump + ' $scratch/dump\n')
 
             outfile.write('\n')
             outfile.write('cd $scratch\n')

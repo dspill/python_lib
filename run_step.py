@@ -4,6 +4,7 @@ import json
 import espressopp as epp
 from espressopp.tools.functions import setupSystem, customWritexyz, \
         customWritexyzStream, fileOutput, printInteractions
+from file_operations import archive_dump
 
 def warmup(p):
     ''' Generate configuration and perform warmup '''

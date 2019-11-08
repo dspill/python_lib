@@ -2,6 +2,10 @@
 import os
 import re
 import tarfile
+import tempfile
+import subprocess
+import warnings
+import shutil
 from shutil import copy2, copyfileobj
 from distutils.dir_util import copy_tree
 
@@ -252,3 +256,79 @@ def tardir(path, tar_name, mode='w'):
         for root, _, files in os.walk(path):
             for f in files:
                 tar_handle.add(os.path.join(root, f))
+
+
+def archive_directory(directory, path, rm=False):
+    print('archiving directory', directory)
+    print('to path ', path)
+
+    if not os.path.exists(path):
+        print("creating " + path)
+        os.mkdir(path)
+
+    # archive rest of the data
+    try:
+        basename = os.path.abspath(directory)
+        basename = os.path.basename(basename)
+
+        temp_dir = tempfile.mkdtemp()
+        temp_file = basename + '.tar'
+        temp_path = temp_dir + '/' + temp_file
+
+        archive_path = os.path.normpath(path + '/' + temp_file)
+        if os.path.exists(archive_path):
+            warnings.warn("WARNING: " + archive_path + ' already exists',
+                    RuntimeWarning)
+            return
+
+        print('compressing directory to temporary file: ' + temp_path)
+        returncode = subprocess.call(['tar', '-cf', temp_path, directory])
+        if returncode != 0:
+            raise ChildProcessError('tar command failed')
+
+        print('moving archive')
+        shutil.move(temp_path, path)
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+    if rm:
+        print('removing ' + directory)
+        shutil.rmtree(directory)
+
+
+def archive_dump(directory, path, rm=False):
+    print('archiving dump ' + directory)
+    print('to path ', path)
+
+    if not os.path.exists(path):
+        print("creating " + path)
+        os.mkdir(path)
+
+    basename = os.path.abspath(directory)
+    basename = os.path.dirname(basename)
+    basename = os.path.basename(basename)
+
+    try:
+        temp_dir = tempfile.mkdtemp()
+        temp_file = basename + '_dump.tar'
+        temp_path = temp_dir + '/' + temp_file
+
+        print('compressing dump to: ' + temp_path)
+        returncode = subprocess.call(['tar', '-cf', temp_path, directory])
+        if returncode != 0:
+            raise ChildProcessError('tar command failed')
+
+        archive_path = os.path.normpath(path + '/' + temp_file)
+        if os.path.exists(archive_path):
+            raise RuntimeError(archive_path + ' already exists')
+
+        print('moving dump archive')
+        shutil.move(temp_path, path)
+
+        if rm and returncode == 0:
+            print('removing ' + directory)
+            shutil.rmtree(directory)
+
+    finally:
+        shutil.rmtree(temp_dir)
