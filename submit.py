@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+import argparse
 from shutil import rmtree
 from functions import hours_minutes_seconds, YesNo
 from file_operations import scratch_path, cwd, Dump_folder
@@ -276,17 +277,19 @@ class Submit_script:
         self.write_submit_script(submit_scriptname)
         self.write_parameters()
 
-def generate(p, arguments):
+def generate(p):
     ''' generate a submit script that can be submitted via the command
     sbatch
     '''
-    p['simstep']   = arguments['s']
-    p['infile']    = arguments['i']
+    arguments = parseArguments()
+    p['simstep']   = arguments['simstep']
+    p['infile']    = arguments['infile']
     p['name']      = arguments['name']
 
     scriptname = 'submit_' + p['simstep'] + '.sh'
 
     print('Generating ' + scriptname)
+    # warmup on express partition
     if p['simstep'] in ['warmup', 'warmup2d']:
         p['partition']         = 'express'
         p['n_nodes']           = 2
@@ -313,8 +316,21 @@ def generate(p, arguments):
         p['ints_per_step']     = 100
     # ================== TESTING ======================
 
-    submit_script = Submit_script(p, force=arguments['f'])
+    submit_script = Submit_script(p, force=arguments['force'])
     # write parameters to file
     submit_script.write_parameters()
     # write actual submit script
     submit_script.write(scriptname)
+
+def parseArguments():
+    parser = argparse.ArgumentParser(
+        description='''Generate slurm submit script''')
+    parser.add_argument('--simstep', '-s', type=str,
+            choices=['warmup', 'warmup2d', 'relax', 'add_lb', 'quench'], required=True)
+    parser.add_argument('--infile', '-i', type=str, help='input file')
+    parser.add_argument('--test', '-t', action='store_true', help='Short test run')
+    parser.add_argument('--force', '-f', action='store_true',
+            help="Force generation and do not sanity check")
+    parser.add_argument('--name', '-n', type=str,
+            help='name: slurm job name', required=False, default=None)
+    return vars(parser.parse_args())
