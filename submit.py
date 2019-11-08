@@ -5,7 +5,7 @@ from shutil import rmtree
 from functions import hours_minutes_seconds, YesNo
 from file_operations import scratch_path, cwd, Dump_folder
 
-valid_simsteps = ['warmup', 'relax', 'add_lb', 'quench']
+valid_simsteps = ['warmup', 'warmup2d', 'relax', 'add_lb', 'quench']
 
 class Submit_script:
     # def __init__(self, **parameters):
@@ -87,7 +87,7 @@ class Submit_script:
         if self.simstep not in valid_simsteps:
             raise RuntimeError('simstep ' + self.simstep + 'not supported')
 
-        if self.simstep != 'warmup':
+        if self.simstep not in ['warmup', 'warmup2d']:
             infile = self.infile
             if not infile:
                 raise RuntimeError('You have to give an input file')
@@ -130,6 +130,8 @@ class Submit_script:
                 + self.para_filename + '\')\n')
         if self.simstep == 'warmup':
             outfile.write('run_step.warmup(p)\n')
+        elif self.simstep == 'warmup2d':
+            outfile.write('run_step.warmup2d(p)\n')
         else:
             outfile.write('run_step.run(\'' + self.simstep
                     + '\', p, \'' + os.path.basename(self.infile) + '\')\n')
@@ -285,7 +287,7 @@ def generate(p, arguments):
     scriptname = 'submit_' + p['simstep'] + '.sh'
 
     print('Generating ' + scriptname)
-    if p['simstep'] == 'warmup':
+    if p['simstep'] in ['warmup', 'warmup2d']:
         p['partition']         = 'express'
         p['n_nodes']           = 2
         p['n_tasks_per_node']  = 32
@@ -312,5 +314,7 @@ def generate(p, arguments):
     # ================== TESTING ======================
 
     submit_script = Submit_script(p, force=arguments['f'])
+    # write parameters to file
     submit_script.write_parameters()
+    # write actual submit script
     submit_script.write(scriptname)

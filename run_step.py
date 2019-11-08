@@ -3,7 +3,8 @@ import os
 import json
 import espressopp as epp
 from espressopp.tools.functions import setupSystem, customWritexyz, \
-        customWritexyzStream, fileOutput, printInteractions
+        customWritexyzStream, fileOutput, printInteractions, \
+        arrangeChainsInSquareShape
 
 def warmup(p):
     ''' Generate configuration and perform warmup '''
@@ -153,6 +154,49 @@ def warmup(p):
                    append=False)
 
 
+def warmup2d(p):
+    ''' Generate configuration, put it in the z=0 plane and perform warmup '''
+    timeout = time.time() + 0.97 * p['timelimit'] - 90
+    simstep = 'warmup2d'
+
+    system, integrator, _ = setupSystem(p, xyzfilename=None, phi=0.,
+                                         with_lb=False)
+    printInteractions(system)
+
+    arrangeChainsInSquareShape(system, p['number_of_chains'],
+            p['degree_of_polymerization'], p['box'][0])
+
+    # display observables
+    epp.tools.analyse.info(system, integrator)
+    # output observables
+    outname = "output_"+simstep+".dat"
+    fileOutput(system, integrator, outname)
+    # output trajectory
+    trajname = "traj_"+simstep+".xyz"
+    filestream = open(trajname, 'w')
+    customWritexyzStream(filestream, system)
+
+    duration = 0.
+    while time.time() < (timeout - duration):
+        duration = time.time()
+
+        integrator.run(p['ints_per_step'])
+        # display observables
+        epp.tools.analyse.info(system, integrator)
+        # output observables
+        fileOutput(system, integrator, outname)
+        # output trajectory
+        customWritexyzStream(filestream, system)
+
+        duration = time.time() - duration
+
+    filestream.close()
+
+    customWritexyz('final_configuration_' + simstep + '.xyz', system,
+            velocities=True,
+            append=False)
+
+
 def run(simstep, p, xyzfilename):
     ''' Run simulation with parameters p '''
     if simstep == 'quench':
@@ -215,7 +259,7 @@ def run(simstep, p, xyzfilename):
 
     filestream.close()
 
-    customWritexyz("final_configuration_" + simstep + '.xyz', system,
+    customWritexyz('final_configuration_' + simstep + '.xyz', system,
                    velocities=True, append=False)
 
 
