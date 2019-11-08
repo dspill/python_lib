@@ -6,7 +6,7 @@ from shutil import rmtree
 from functions import hours_minutes_seconds, YesNo
 from file_operations import scratch_path, cwd, Dump_folder
 
-valid_simsteps = ['warmup', 'warmup2d', 'relax', 'add_lb', 'quench']
+valid_simsteps = ['warmup', 'warmup2d', 'relax', 'add_lb', 'quench', 'cleanup']
 
 class Submit_script:
     # def __init__(self, **parameters):
@@ -86,9 +86,9 @@ class Submit_script:
                 raise RuntimeError('Variable ' + key + ' not set')
 
         if self.simstep not in valid_simsteps:
-            raise RuntimeError('simstep ' + self.simstep + 'not supported')
+            raise RuntimeError('simstep ' + self.simstep + ' not supported')
 
-        if self.simstep not in ['warmup', 'warmup2d']:
+        if self.simstep not in ['warmup', 'warmup2d', 'cleanup']:
             infile = self.infile
             if not infile:
                 raise RuntimeError('You have to give an input file')
@@ -104,6 +104,33 @@ class Submit_script:
         self.esprc_path = os.path.normpath(self.esprc_path)
         if not os.path.isfile(self.esprc_path):
             raise FileNotFoundError(self.esprc_path + ' does not exist')
+
+    def write_slurm(self, outfile):
+        ''' write slurm directives '''
+        outfile.write('#!/bin/bash\n')
+        outfile.write('# Standard output and error:\n')
+        outfile.write('#SBATCH -o ./tjob_' + self.simstep + '.out.%j\n') # log stdout
+        outfile.write('#SBATCH -e ./tjob_' + self.simstep + '.err.%j\n') # log stderr
+        outfile.write('\n')
+
+        outfile.write('#SBATCH -D ./\n') # working directory
+        outfile.write('#SBATCH -J ' + self.name + '\n') # job name
+        outfile.write('\n')
+
+        outfile.write('#SBATCH --partition=' + self.partition + '\n')
+        if self.partition not in ['express', 'small']:
+            outfile.write('#SBATCH --nodes=' + str(self.n_nodes)+'\n')
+        outfile.write('#SBATCH --ntasks-per-node='+str(self.n_tasks_per_node)+'\n')
+        outfile.write('#SBATCH --ntasks-per-core='+str(self.n_tasks_per_core)+'\n')
+        timelimit_datetime = datetime.timedelta(seconds=self.timelimit)
+        outfile.write('#SBATCH --time='
+                + hours_minutes_seconds(timelimit_datetime))
+        outfile.write('\n')
+
+        if self.email:
+            outfile.write('#SBATCH --mail-type=' + self.mail_type + '\n')
+        outfile.write('#SBATCH --mail-user=' + self.email + '\n')
+        outfile.write('\n')
 
     def write_modules(self, outfile):
         outfile.write('module purge\n')
@@ -142,31 +169,7 @@ class Submit_script:
 
     def write_submit_script(self, scriptname):
         with open(scriptname, 'w') as outfile:
-            # write slurm directives
-            outfile.write('#!/bin/bash\n')
-            outfile.write('# Standard output and error:\n')
-            outfile.write('#SBATCH -o ./tjob_' + self.simstep + '.out.%j\n') # log stdout
-            outfile.write('#SBATCH -e ./tjob_' + self.simstep + '.err.%j\n') # log stderr
-            outfile.write('\n')
-
-            outfile.write('#SBATCH -D ./\n') # working directory
-            outfile.write('#SBATCH -J ' + self.name + '\n') # job name
-            outfile.write('\n')
-
-            outfile.write('#SBATCH --partition=' + self.partition + '\n')
-            if self.partition != 'express':
-                outfile.write('#SBATCH --nodes=' + str(self.n_nodes)+'\n')
-            outfile.write('#SBATCH --ntasks-per-node='+str(self.n_tasks_per_node)+'\n')
-            outfile.write('#SBATCH --ntasks-per-core='+str(self.n_tasks_per_core)+'\n')
-            timelimit_datetime = datetime.timedelta(seconds=self.timelimit)
-            outfile.write('#SBATCH --time='
-                    + hours_minutes_seconds(timelimit_datetime))
-            outfile.write('\n')
-
-            if self.email:
-                outfile.write('#SBATCH --mail-type=' + self.mail_type + '\n')
-            outfile.write('#SBATCH --mail-user=' + self.email + '\n')
-            outfile.write('\n')
+            self.write_slurm(outfile)
 
             outfile.write('echo "Job $SLURM_JOB_ID"\n')
 
@@ -186,7 +189,7 @@ class Submit_script:
 
             # set some variables
             scratch = scratch_path()
-            if os.path.isdir(scratch):
+            if os.path.isdir(scratch) and self.simstep != 'cleanup':
                 if YesNo('Scratch directory ' + scratch
                         + ' exists. Delete it? '):
                     print('deleting...')
@@ -277,6 +280,40 @@ class Submit_script:
         self.write_submit_script(submit_scriptname)
         self.write_parameters()
 
+
+    def write_cleanup_script(self, scriptname, backupdir):
+        with open(scriptname, 'w') as outfile:
+            self.write_slurm(outfile)
+            outfile.write('echo "Job $SLURM_JOB_ID"\n')
+            outfile.write('\n')
+
+            # set some variables
+            scratch = scratch_path()
+
+            # Run the program:
+            outfile.write('python3 << END\n')
+            outfile.write('import file_operations as fo\n')
+            outfile.write('fo.archive_dump(\'' + scratch + '/dump\', ' 
+                    + '\'' + backupdir + '\'' + ', rm=True)\n')
+            outfile.write('END\n')
+
+            outfile.write('\n')
+            outfile.write('result=$?\n')
+            outfile.write('\n')
+
+            outfile.write('if [ $result -eq 0 ]; then\n')
+            outfile.write('    echo \'job successful\'\n')
+            outfile.write('    echo DONE\n')
+            outfile.write('    exit $result\n')
+
+            outfile.write('else\n')
+            outfile.write('    echo \'job FAILED\'\n')
+            outfile.write('    echo DONE\n')
+            outfile.write('    exit $result\n')
+            outfile.write('fi\n')
+
+            outfile.write('echo DONE\n')
+
 def generate(p):
     ''' generate a submit script that can be submitted via the command
     sbatch
@@ -292,10 +329,17 @@ def generate(p):
     # warmup on express partition
     if p['simstep'] in ['warmup', 'warmup2d']:
         p['partition']         = 'express'
-        p['n_nodes']           = 2
+        p['n_nodes']           = 1
         p['n_tasks_per_node']  = 32
         p['n_tasks_per_core']  = 1
         p['timelimit']         = 30*60
+        p['lattice_boltzmann'] = False
+    elif p['simstep'] == 'cleanup':
+        p['partition']         = 'small'
+        p['n_nodes']           = 1
+        p['n_tasks_per_node']  = 1
+        p['n_tasks_per_core']  = 1
+        p['timelimit']         = datetime.timedelta(hours=12).total_seconds()
         p['lattice_boltzmann'] = False
     elif p['simstep'] == 'relax':
         p['lattice_boltzmann'] = False
@@ -316,21 +360,32 @@ def generate(p):
         p['ints_per_step']     = 100
     # ================== TESTING ======================
 
+
     submit_script = Submit_script(p, force=arguments['force'])
-    # write parameters to file
-    submit_script.write_parameters()
-    # write actual submit script
-    submit_script.write(scriptname)
+    if arguments['simstep'] == 'cleanup':
+        submit_script.write_cleanup_script(scriptname, arguments['backupdir'])
+    else:
+        # write parameters to file
+        submit_script.write_parameters()
+        # write actual submit script
+        submit_script.write(scriptname)
+
 
 def parseArguments():
     parser = argparse.ArgumentParser(
         description='''Generate slurm submit script''')
     parser.add_argument('--simstep', '-s', type=str,
-            choices=['warmup', 'warmup2d', 'relax', 'add_lb', 'quench'], required=True)
+            choices=valid_simsteps, required=True)
     parser.add_argument('--infile', '-i', type=str, help='input file')
     parser.add_argument('--test', '-t', action='store_true', help='Short test run')
     parser.add_argument('--force', '-f', action='store_true',
             help="Force generation and do not sanity check")
     parser.add_argument('--name', '-n', type=str,
             help='name: slurm job name', required=False, default=None)
-    return vars(parser.parse_args())
+    parser.add_argument('--backupdir', '-b', type=str, help='backup directory',
+            required=False, default='/r/d/dspiller/')
+
+    arguments = vars(parser.parse_args())
+    if arguments['simstep'] == 'cleanup' and not arguments['backupdir']:
+        raise RuntimeError('you have to specify --backupdir')
+    return arguments
