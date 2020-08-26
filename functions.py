@@ -7,6 +7,7 @@ import subprocess
 import contextlib
 import io
 import sys
+import scipy
 import numpy as np
 from shutil import copy2, copyfileobj
 
@@ -164,9 +165,9 @@ def concatenateFiles(file_list, outfile):
                 copyfileobj(fd, wfd, 1024*1024*10)
 
 
-def natural_sort(l): 
-    convert = lambda text: int(text) if text.isdigit() else text.lower() 
-    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+def natural_sort(l):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
     return sorted(l, key = alphanum_key)
 
 def hours_minutes_seconds(td):
@@ -175,3 +176,31 @@ def hours_minutes_seconds(td):
             int(td.days * 24 + td.seconds//3600),
             int(td.seconds//60)%60,
             int(td.seconds%60))
+
+def iterable(obj):
+    try:
+        iter(obj)
+    except Exception:
+        return False
+    else:
+        return True
+
+
+def roots(f, x, args=()):
+    sign = np.sign(f(x, *args))
+
+    roots = []
+    for i in range(len(sign) - 1):
+        if sign[i] + sign[i+1] == 0: # oposite signs
+            # print('sign change between %f and %f' % (x[i], x[i+1]))
+            # print(f(x[i], *args), f(x[i+1], *args))
+            x_0 = scipy.optimize.brentq(f, x[i], x[i+1], args)
+            y_0 = f(x_0, *args)
+
+            if np.isnan(y_0) or abs(y_0) > 1e-3:
+                print("WARNING: incompatible root found")
+                continue
+
+            roots.append(x_0)
+
+    return roots

@@ -413,7 +413,7 @@ def get_figsize(wf=0.5, hf=(5.**0.5-1.0)/2.0, style='beamer'):
                         using \showthe\columnwidth
     Returns:  (fig_width,fig_height): that should be given to matplotlib
     """
-    if style is 'beamer': 
+    if style is 'beamer':
         columnwidth = 307.28987 # pt
     elif style is 'article':
         columnwidth = 455.24411 # pt
